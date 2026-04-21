@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>CONTACT — Observational System</title>
+<style>
+  :root {
+    --c-primary: #2dd36f;
+    --c-dim: #1a7a42;
+    --c-faint: #0d5a32;
+    --c-ultra-faint: #0d3d22;
+    --c-bg: #050a07;
+    --c-accent-faint: rgba(45,211,111,0.06);
+    --c-accent-ultra: rgba(45,211,111,0.02);
+    --c-accent-dragover: rgba(45,211,111,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    color: var(--c-primary);
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 30px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 11px; font-weight: 400; color: var(--c-dim); letter-spacing: 0.25em; margin-bottom: 24px; }
+  #main { width: 100%; max-width: 1100px; }
+  #canvas-wrap { position: relative; width: 100%; background: var(--c-bg); border: 1px solid var(--c-dim); margin-bottom: 14px; }
+  canvas { display: block; width: 100%; }
+  #ctrl, #mode-row, #source-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 0;
+  }
+  #ctrl { border-top: 1px solid var(--c-ultra-faint); border-bottom: 1px solid var(--c-ultra-faint); margin: 6px 0; }
+  label.inline-label { font-size: 11px; font-weight: 500; color: var(--c-dim); white-space: nowrap; letter-spacing: 0.08em; text-transform: uppercase; }
+  button {
+    background: transparent;
+    border: 1px solid var(--c-dim);
+    color: var(--c-dim);
+    padding: 7px 14px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--c-primary); color: var(--c-primary); }
+  button.active { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-accent-faint); }
+  button:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  button.theme-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  button.theme-btn:hover:not(.active) { border-color: rgba(255,255,255,0.45); }
+  button.theme-btn.active {
+    box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--c-primary);
+    border-color: var(--c-primary);
+  }
+
+  #sens-slider, #fade-slider { accent-color: var(--c-primary); width: 100px; }
+  #stats {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    padding: 10px 0; font-size: 10px; color: var(--c-faint);
+    letter-spacing: 0.08em; font-weight: 400;
+  }
+  #stats b { color: var(--c-primary); font-weight: 500; margin-left: 2px; font-variant-numeric: tabular-nums; }
+  #drop-zone {
+    width: 100%; padding: 48px 20px;
+    border: 1px dashed var(--c-dim); text-align: center;
+    color: var(--c-dim); font-size: 11px; cursor: pointer;
+    margin-bottom: 12px; letter-spacing: 0.15em;
+    text-transform: uppercase; font-weight: 500;
+  }
+  #drop-zone:hover { border-color: var(--c-primary); color: var(--c-primary); }
+  #drop-zone.dragover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-accent-dragover); }
+  .divider { width: 1px; height: 16px; background: var(--c-ultra-faint); margin: 0 4px; }
+  #log {
+    font-size: 10px; color: var(--c-dim); margin-top: 10px; min-height: 16px;
+    letter-spacing: 0.1em; font-weight: 400;
+  }
+  #rule-card {
+    border: 1px solid var(--c-ultra-faint); padding: 16px 20px; margin-bottom: 16px;
+    background: var(--c-accent-ultra);
+  }
+  #rule-card .title { font-size: 10px; color: var(--c-dim); letter-spacing: 0.2em; margin-bottom: 8px; font-weight: 500; }
+  #rule-card .rule { font-size: 15px; color: var(--c-primary); font-weight: 400; letter-spacing: 0.02em; }
+  #rule-card .sub { font-size: 10px; color: var(--c-faint); margin-top: 8px; letter-spacing: 0.08em; line-height: 1.6; }
+  video { display: none; }
+  #instructions { font-size: 10px; color: var(--c-faint); line-height: 1.8; margin-top: 10px; letter-spacing: 0.05em; }
+
+  /* ===== MOBILE / TOUCH ADAPTATION ===== */
+  @media (max-width: 768px) {
+    body {
+      padding: 16px 10px;
+      padding-top: env(safe-area-inset-top, 16px);
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+    h1 {
+      font-size: 10px;
+      margin-bottom: 14px;
+      letter-spacing: 0.2em;
+    }
+    #rule-card {
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    #rule-card .rule { font-size: 13px; line-height: 1.4; }
+    #rule-card .sub { font-size: 9px; line-height: 1.5; }
+
+    /* Stack control rows vertically */
+    #ctrl, #mode-row, #source-row {
+      gap: 6px;
+      padding: 8px 0;
+    }
+    /* Hide dividers on mobile (rows already wrap) */
+    .divider { display: none; }
+
+    /* Button size: min 44px tap target (Apple HIG) */
+    button {
+      min-height: 36px;
+      padding: 8px 12px;
+      font-size: 10px;
+    }
+    button.theme-btn {
+      min-height: 28px;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+    }
+
+    /* Sliders wider for easier thumb control */
+    #sens-slider, #fade-slider {
+      width: 140px;
+      height: 28px;
+    }
+
+    #stats {
+      gap: 12px;
+      font-size: 9px;
+      padding: 8px 0;
+    }
+    #drop-zone {
+      padding: 28px 12px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+    #instructions {
+      font-size: 9px;
+      line-height: 1.7;
+    }
+    #log {
+      font-size: 9px;
+      line-height: 1.5;
+    }
+  }
+
+  /* Very small screens (iPhone SE etc) */
+  @media (max-width: 380px) {
+    #rule-card .rule { font-size: 12px; }
+    button { font-size: 9px; padding: 8px 10px; }
+    #stats { font-size: 8px; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>CONTACT · OBSERVATIONAL SYSTEM</h1>
+
+<div id="main">
+
+  <div id="rule-card">
+    <div class="title">THE ONLY RULE</div>
+    <div class="rule">When two elements touch, register the contact.</div>
+    <div class="sub">
+      Each element's contact radius (r) is determined by its own size in the world.<br>
+      Contact occurs when the distance between two centers is less than r₁ + r₂.<br>
+      Nothing else is controlled. Everything else is observed.
+    </div>
+  </div>
+
+  <div id="source-row">
+    <button id="btn-upload" class="active">Upload video</button>
+    <button id="btn-webcam">Live webcam</button>
+    <button id="btn-flip-cam" disabled title="Switch front/back camera">⟳ Flip cam</button>
+
+    <div class="divider"></div>
+
+    <label class="inline-label">Theme</label>
+    <button class="theme-btn active" data-theme="green" style="background:#2dd36f" title="Green"></button>
+    <button class="theme-btn" data-theme="amber" style="background:#ffb347" title="Amber"></button>
+    <button class="theme-btn" data-theme="cyan"  style="background:#4de3e3" title="Cyan"></button>
+    <button class="theme-btn" data-theme="white" style="background:#ffffff" title="White"></button>
+    <button class="theme-btn" data-theme="red"   style="background:#ff4d4d" title="Red"></button>
+
+    <div class="divider"></div>
+
+    <button id="btn-grayscale">B&amp;W video</button>
+  </div>
+
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+    Drop video here or click to upload
+    <input type="file" id="file-input" accept="video/*" playsinline style="display:none">
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="cv"></canvas>
+  </div>
+
+  <div id="mode-row">
+    <label class="inline-label">Detection</label>
+    <button id="mode-motion" class="active">Motion</button>
+    <button id="mode-bright">Brightness</button>
+    <button id="mode-coco">COCO-SSD</button>
+  </div>
+
+  <div id="ctrl">
+    <label class="inline-label">Sensitivity</label>
+    <input type="range" id="sens-slider" min="15" max="70" step="5" value="35">
+    <b id="sens-val" style="color:var(--c-primary); font-size:11px; min-width:24px;">35</b>
+
+    <div class="divider"></div>
+
+    <button id="btn-play">Play</button>
+    <button id="btn-pause">Pause</button>
+
+    <div class="divider"></div>
+
+    <button id="btn-boxes" class="active">Boxes</button>
+    <button id="btn-ranges" class="active">Contact ranges</button>
+    <button id="btn-lines" class="active">Lines</button>
+    <button id="btn-circles" class="active">Contact circles</button>
+    <button id="btn-labels">Labels</button>
+    <button id="btn-video" class="active">Video</button>
+
+    <div class="divider"></div>
+
+    <button id="btn-trails">Trails</button>
+    <label class="inline-label" style="opacity:0.6;">Fade</label>
+    <input type="range" id="fade-slider" min="0" max="100" step="5" value="0">
+    <b id="fade-val" style="color:var(--c-primary); font-size:11px; min-width:34px;">0%</b>
+
+    <div class="divider"></div>
+
+    <button id="btn-clear-trails">Clear trails</button>
+    <button id="btn-screenshot">↓ Screenshot</button>
+  </div>
+
+  <div id="stats">
+    <div>Elements <b id="st-elem">0</b></div>
+    <div>Pairs <b id="st-pairs">0</b></div>
+    <div>Avg r <b id="st-avgr">—</b></div>
+    <div>Min r <b id="st-minr">—</b></div>
+    <div>Max r <b id="st-maxr">—</b></div>
+    <div>Mode <b id="st-mode">MOTION</b></div>
+    <div>Status <b id="st-status">IDLE</b></div>
+    <div>Trails <b id="st-trails">OFF</b></div>
+  </div>
+
+  <div id="log">System ready. Upload video or start webcam to begin observing.</div>
+
+  <div id="instructions">
+    MOTION — detects moving blobs; r and bounding box derived from each blob's shape. Best for aerial crowds, birds, traffic, fish, raindrops.<br>
+    BRIGHTNESS — detects bright regions against darker background. Best for daytime light spots, lamps, reflections, glowing objects.<br>
+    COCO-SSD — AI object detection; bounding box and label come directly from the model. Best for close-up subjects (people, cars, animals).<br>
+    <span style="color:var(--c-primary);">TRAILS — accumulates every contact event over time, building an archive of encounters.</span><br>
+    <span style="color:var(--c-primary);">MOBILE — open this page over https and tap "Live webcam"; back camera is used by default.</span>
+  </div>
+</div>
+
+<video id="vid" playsinline webkit-playsinline muted autoplay></video>
+
+<script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
+<script>
+(function(){
+
+  // ---------- THEME PALETTES ----------
+  const palettes = {
+    green: {
+      primary: '#2dd36f', primaryRgb: '45,211,111',
+      dim: '#1a7a42', faint: '#0d5a32', ultraFaint: '#0d3d22',
+      bg: '#050a07',
+      accentFaint: 'rgba(45,211,111,0.06)',
+      accentUltra: 'rgba(45,211,111,0.02)',
+      accentDragover: 'rgba(45,211,111,0.04)'
+    },
+    amber: {
+      primary: '#ffb347', primaryRgb: '255,179,71',
+      dim: '#b87a26', faint: '#7a4a13', ultraFaint: '#3d2a0d',
+      bg: '#0a0805',
+      accentFaint: 'rgba(255,179,71,0.06)',
+      accentUltra: 'rgba(255,179,71,0.02)',
+      accentDragover: 'rgba(255,179,71,0.04)'
+    },
+    cyan: {
+      primary: '#4de3e3', primaryRgb: '77,227,227',
+      dim: '#1d8a8a', faint: '#0d5a5a', ultraFaint: '#0d3d3d',
+      bg: '#050a0a',
+      accentFaint: 'rgba(77,227,227,0.06)',
+      accentUltra: 'rgba(77,227,227,0.02)',
+      accentDragover: 'rgba(77,227,227,0.04)'
+    },
+    white: {
+      primary: '#ffffff', primaryRgb: '255,255,255',
+      dim: '#888888', faint: '#555555', ultraFaint: '#2a2a2a',
+      bg: '#0a0a0a',
+      accentFaint: 'rgba(255,255,255,0.08)',
+      accentUltra: 'rgba(255,255,255,0.03)',
+      accentDragover: 'rgba(255,255,255,0.05)'
+    },
+    red: {
+      primary: '#ff4d4d', primaryRgb: '255,77,77',
+      dim: '#a82828', faint: '#7a1010', ultraFaint: '#3d0808',
+      bg: '#0a0505',
+      accentFaint: 'rgba(255,77,77,0.06)',
+      accentUltra: 'rgba(255,77,77,0.02)',
+      accentDragover: 'rgba(255,77,77,0.04)'
+    }
+  };
+
+  let P = palettes.green;
+
+  function applyTheme(name) {
+    P = palettes[name];
+    const root = document.documentElement.style;
+    root.setProperty('--c-primary', P.primary);
+    root.setProperty('--c-dim', P.dim);
+    root.setProperty('--c-faint', P.faint);
+    root.setProperty('--c-ultra-faint', P.ultraFaint);
+    root.setProperty('--c-bg', P.bg);
+    root.setProperty('--c-accent-faint', P.accentFaint);
+    root.setProperty('--c-accent-ultra', P.accentUltra);
+    root.setProperty('--c-accent-dragover', P.accentDragover);
+  }
+
+  // ---------- ELEMENTS ----------
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const vid = document.getElementById('vid');
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const sensSlider = document.getElementById('sens-slider');
+  const fadeSlider = document.getElementById('fade-slider');
+  const log = document.getElementById('log');
+
+  let W = 960, H = 540;
+  let sensitivity = 35;
+  let mode = 'motion';
+  let detector = null, cocoReady = false;
+  let cocoDetections = [];
+  let motionBlobs = [];
+  let brightBlobs = [];
+  let manualPoints = [];
+  let showBoxes = true, showRanges = true, showLines = true;
+  let showCircles = true, showLabels = false, showVideo = true;
+  let showTrails = false;
+  let grayscale = false;
+  let fadeRate = 0;
+  let webcamStream = null;
+
+  const DETECT_W = 240, DETECT_H = 135;
+  const offCv = document.createElement('canvas');
+  offCv.width = DETECT_W; offCv.height = DETECT_H;
+  const offCtx = offCv.getContext('2d', { willReadFrequently: true });
+  let prevFrameData = null;
+
+  const accCv = document.createElement('canvas');
+  const accCtx = accCv.getContext('2d');
+
+  function resizeCanvas() {
+    const wrap = document.getElementById('canvas-wrap');
+    W = wrap.clientWidth;
+    H = Math.round(W * 9 / 16);
+    cv.width = W; cv.height = H;
+    cv.style.height = H + 'px';
+    accCv.width = W; accCv.height = H;
+    prevFrameData = null;
+  }
+
+  function setLog(msg) { log.textContent = msg; }
+  function setStatus(s) { document.getElementById('st-status').textContent = s; }
+
+  // ---------- BLOB DETECTION ----------
+  function findBlobs(mask, w, h, minSize) {
+    const visited = new Uint8Array(w * h);
+    const blobs = [];
+    const stack = new Int32Array(w * h * 2);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (visited[idx] || !mask[idx]) continue;
+
+        let sp = 0;
+        stack[sp++] = x; stack[sp++] = y;
+        let sumX = 0, sumY = 0, count = 0;
+        let minX = x, maxX = x, minY = y, maxY = y;
+
+        while (sp > 0) {
+          const cy = stack[--sp], cx = stack[--sp];
+          if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
+          const cidx = cy * w + cx;
+          if (visited[cidx] || !mask[cidx]) continue;
+
+          visited[cidx] = 1;
+          sumX += cx; sumY += cy; count++;
+          if (cx < minX) minX = cx;
+          if (cx > maxX) maxX = cx;
+          if (cy < minY) minY = cy;
+          if (cy > maxY) maxY = cy;
+
+          stack[sp++] = cx + 1; stack[sp++] = cy;
+          stack[sp++] = cx - 1; stack[sp++] = cy;
+          stack[sp++] = cx; stack[sp++] = cy + 1;
+          stack[sp++] = cx; stack[sp++] = cy - 1;
+        }
+
+        if (count >= minSize) {
+          blobs.push({
+            cx: sumX / count, cy: sumY / count, size: count,
+            bx: minX, by: minY,
+            bw: maxX - minX + 1, bh: maxY - minY + 1
+          });
+        }
+      }
+    }
+    return blobs;
+  }
+
+  function detectMotion() {
+    if (!vid.videoWidth || vid.paused) return;
+    offCtx.drawImage(vid, 0, 0, DETECT_W, DETECT_H);
+    const curr = offCtx.getImageData(0, 0, DETECT_W, DETECT_H);
+    if (!prevFrameData) { prevFrameData = curr; return; }
+
+    const mask = new Uint8Array(DETECT_W * DETECT_H);
+    for (let i = 0; i < mask.length; i++) {
+      const j = i * 4;
+      const diff = (
+        Math.abs(curr.data[j]   - prevFrameData.data[j]) +
+        Math.abs(curr.data[j+1] - prevFrameData.data[j+1]) +
+        Math.abs(curr.data[j+2] - prevFrameData.data[j+2])
+      ) / 3;
+      mask[i] = diff > sensitivity ? 1 : 0;
+    }
+
+    const rawBlobs = findBlobs(mask, DETECT_W, DETECT_H, 4);
+    prevFrameData = curr;
+
+    const sx = W / DETECT_W, sy = H / DETECT_H;
+    const avgScale = (sx + sy) / 2;
+    motionBlobs = rawBlobs.map(b => ({
+      x: b.cx * sx, y: b.cy * sy,
+      r: Math.max(10, Math.sqrt(b.size / Math.PI) * avgScale * 1.8),
+      bx: b.bx * sx, by: b.by * sy,
+      bw: b.bw * sx, bh: b.bh * sy,
+      label: 'motion'
+    })).slice(0, 80);
+  }
+
+  function detectBrightness() {
+    if (!vid.videoWidth || vid.paused) return;
+
+    // Higher resolution for brightness detection (small bright spots like stars / sparks)
+    const BW = 480, BH = 270;
+    const tempCv = document.createElement('canvas');
+    tempCv.width = BW; tempCv.height = BH;
+    const tempCtx = tempCv.getContext('2d', { willReadFrequently: true });
+    tempCtx.drawImage(vid, 0, 0, BW, BH);
+    const data = tempCtx.getImageData(0, 0, BW, BH).data;
+
+    // Build luminance array
+    const lum = new Float32Array(BW * BH);
+    let totalLum = 0;
+    let maxLum = 0;
+    for (let i = 0; i < lum.length; i++) {
+      const j = i * 4;
+      const l = data[j] * 0.299 + data[j+1] * 0.587 + data[j+2] * 0.114;
+      lum[i] = l;
+      totalLum += l;
+      if (l > maxLum) maxLum = l;
+    }
+    const avgLum = totalLum / lum.length;
+
+    // Adaptive threshold based on the dynamic range of the frame.
+    // sensitivity 15 = catch dim points (5% of max)
+    // sensitivity 70 = catch only the brightest (60% of max)
+    // This works for both dark scenes (stars) and bright scenes (fireworks).
+    const sensFraction = sensitivity / 100;          // 0.15 ~ 0.70
+    const range = maxLum - avgLum;
+    const threshold = Math.max(40, avgLum + range * sensFraction);
+
+    const mask = new Uint8Array(BW * BH);
+    for (let i = 0; i < mask.length; i++) {
+      mask[i] = lum[i] > threshold ? 1 : 0;
+    }
+
+    const rawBlobs = findBlobs(mask, BW, BH, 1);
+    const sx = W / BW, sy = H / BH;
+    const avgScale = (sx + sy) / 2;
+    brightBlobs = rawBlobs.map(b => ({
+      x: b.cx * sx, y: b.cy * sy,
+      r: Math.max(6, Math.sqrt(b.size / Math.PI) * avgScale * 2.5),
+      bx: b.bx * sx, by: b.by * sy,
+      bw: Math.max(4, b.bw * sx), bh: Math.max(4, b.bh * sy),
+      label: 'bright'
+    })).slice(0, 250);
+  }
+
+  function initCoco() {
+    setLog('Loading COCO-SSD model…');
+    setStatus('LOADING');
+    detector = ml5.objectDetector('cocossd', function() {
+      cocoReady = true;
+      setLog('COCO-SSD ready.');
+      setStatus('READY');
+    });
+  }
+  function detectCoco() {
+    if (!cocoReady || !detector || !vid.videoWidth || vid.paused) return;
+    detector.detect(vid, function(err, results) {
+      if (!err && results) cocoDetections = results;
+    });
+  }
+
+  function getPoints() {
+    if (mode === 'motion')   return motionBlobs;
+    if (mode === 'bright')   return brightBlobs;
+    if (mode === 'coco') {
+      const sx = W / (vid.videoWidth || W);
+      const sy = H / (vid.videoHeight || H);
+      return cocoDetections.map(d => {
+        const bw = d.width * sx, bh = d.height * sy;
+        return {
+          x: (d.x + d.width/2) * sx,
+          y: (d.y + d.height/2) * sy,
+          r: Math.min(bw, bh) / 2,
+          bx: d.x * sx, by: d.y * sy,
+          bw: bw, bh: bh, label: d.label
+        };
+      });
+    }
+    return [];
+  }
+
+  function rgba(a) { return `rgba(${P.primaryRgb},${a})`; }
+
+  function render() {
+    if (!vid.videoWidth) { requestAnimationFrame(render); return; }
+
+    sensitivity = parseInt(sensSlider.value);
+    fadeRate = parseInt(fadeSlider.value);
+
+    // Fade trails
+    if (showTrails && fadeRate > 0) {
+      accCtx.globalCompositeOperation = 'destination-out';
+      accCtx.fillStyle = `rgba(0,0,0,${fadeRate / 500})`;
+      accCtx.fillRect(0, 0, W, H);
+      accCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // Video or black bg — with optional B&W filter
+    if (showVideo) {
+      ctx.filter = grayscale ? 'grayscale(1) contrast(1.05)' : 'none';
+      ctx.drawImage(vid, 0, 0, W, H);
+      ctx.filter = 'none';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.fillStyle = P.bg;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Accumulated trails overlay
+    if (showTrails) {
+      ctx.drawImage(accCv, 0, 0);
+    }
+
+    const pts = getPoints();
+    let pairs = 0;
+    let sumR = 0, minR = Infinity, maxR = 0;
+
+    // Element contact ranges (current frame)
+    if (showRanges) {
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.strokeStyle = rgba(0.12);
+        ctx.lineWidth = 1;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // Contact events
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      sumR += a.r;
+      if (a.r < minR) minR = a.r;
+      if (a.r > maxR) maxR = a.r;
+
+      for (let j = i + 1; j < pts.length; j++) {
+        const b = pts[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        const threshold = a.r + b.r;
+
+        if (d < threshold) {
+          pairs++;
+          const mx = (a.x + b.x) / 2;
+          const my = (a.y + b.y) / 2;
+          const overlapR = (threshold - d) / 2;
+          const alpha = Math.min(1, (1 - d / threshold) * 1.2);
+
+          if (showLines) {
+            ctx.beginPath();
+            ctx.strokeStyle = rgba(alpha * 0.35);
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+
+            if (showTrails) {
+              accCtx.beginPath();
+              accCtx.strokeStyle = rgba(alpha * 0.18);
+              accCtx.lineWidth = 0.6;
+              accCtx.moveTo(a.x, a.y);
+              accCtx.lineTo(b.x, b.y);
+              accCtx.stroke();
+            }
+          }
+
+          if (showCircles) {
+            ctx.beginPath();
+            ctx.strokeStyle = rgba(alpha);
+            ctx.lineWidth = 1.2;
+            ctx.arc(mx, my, overlapR, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (showTrails) {
+              accCtx.beginPath();
+              accCtx.strokeStyle = rgba(alpha * 0.35);
+              accCtx.lineWidth = 0.8;
+              accCtx.arc(mx, my, overlapR, 0, Math.PI * 2);
+              accCtx.stroke();
+            }
+          }
+        }
+      }
+    }
+
+    // Bounding boxes — surveillance style
+    // Main rectangle (faint) + bright corner ticks (CCTV / camera AF feel)
+    if (showBoxes) {
+      for (const p of pts) {
+        if (p.bw && p.bh) {
+          const padding = 4;
+          const bx = p.bx - padding;
+          const by = p.by - padding;
+          const bw = p.bw + padding * 2;
+          const bh = p.bh + padding * 2;
+          const tickLen = Math.min(6, bw * 0.12, bh * 0.12);
+
+          // Faint full rectangle
+          ctx.strokeStyle = rgba(0.4);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          // Bright corner ticks
+          ctx.strokeStyle = rgba(0.95);
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(bx, by + tickLen); ctx.lineTo(bx, by); ctx.lineTo(bx + tickLen, by);
+          ctx.moveTo(bx + bw - tickLen, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + tickLen);
+          ctx.moveTo(bx, by + bh - tickLen); ctx.lineTo(bx, by + bh); ctx.lineTo(bx + tickLen, by + bh);
+          ctx.moveTo(bx + bw - tickLen, by + bh); ctx.lineTo(bx + bw, by + bh); ctx.lineTo(bx + bw, by + bh - tickLen);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Labels
+    if (showLabels) {
+      ctx.font = '500 9px -apple-system, "Helvetica Neue", Arial, sans-serif';
+      ctx.fillStyle = P.primary;
+      ctx.textAlign = 'left';
+      for (const p of pts) {
+        if (p.bw && p.bh) {
+          const labelText = `${p.label.toUpperCase()} · r=${Math.round(p.r)}`;
+          ctx.fillText(labelText, p.bx - 3, p.by - 7);
+        }
+      }
+    }
+
+    // Trail dots only (no center crosshair on current frame — boxes are enough indication)
+    if (showTrails) {
+      for (const p of pts) {
+        accCtx.fillStyle = rgba(0.18);
+        accCtx.beginPath();
+        accCtx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+        accCtx.fill();
+      }
+    }
+
+    const avgR = pts.length > 0 ? Math.round(sumR / pts.length) : 0;
+    if (!isFinite(minR)) minR = 0;
+
+    // HUD
+    ctx.font = '500 10px -apple-system, "Helvetica Neue", Arial, sans-serif';
+    ctx.fillStyle = P.primary;
+    ctx.textAlign = 'left';
+    ctx.fillText('CONTACT · OBSERVATIONAL SYSTEM', 16, 24);
+    ctx.textAlign = 'right';
+    let hudRight = 'MODE: ' + mode.toUpperCase();
+    if (showTrails) hudRight += ' · TRAILS ON';
+    if (grayscale)  hudRight += ' · B&W';
+    ctx.fillText(hudRight, W - 16, 24);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = rgba(0.45);
+    ctx.fillText('RULE: when two elements touch, register the contact', 16, H - 40);
+    ctx.fillStyle = P.primary;
+    ctx.fillText(
+      `elements = ${pts.length}    pairs = ${pairs}    r range = [${Math.round(minR)}, ${Math.round(maxR)}]    r avg = ${avgR}`,
+      16, H - 22
+    );
+
+    // Frame corner brackets
+    const bl = 12;
+    ctx.strokeStyle = P.primary;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(4, 4+bl); ctx.lineTo(4, 4); ctx.lineTo(4+bl, 4);
+    ctx.moveTo(W-4-bl, 4); ctx.lineTo(W-4, 4); ctx.lineTo(W-4, 4+bl);
+    ctx.moveTo(4, H-4-bl); ctx.lineTo(4, H-4); ctx.lineTo(4+bl, H-4);
+    ctx.moveTo(W-4-bl, H-4); ctx.lineTo(W-4, H-4); ctx.lineTo(W-4, H-4-bl);
+    ctx.stroke();
+
+    // Stats
+    document.getElementById('st-elem').textContent = pts.length;
+    document.getElementById('st-pairs').textContent = pairs;
+    document.getElementById('st-avgr').textContent = pts.length ? avgR : '—';
+    document.getElementById('st-minr').textContent = pts.length ? Math.round(minR) : '—';
+    document.getElementById('st-maxr').textContent = pts.length ? Math.round(maxR) : '—';
+    document.getElementById('st-mode').textContent = mode.toUpperCase();
+    document.getElementById('st-trails').textContent = showTrails
+      ? (fadeRate === 0 ? 'PERMANENT' : `FADE ${fadeRate}%`)
+      : 'OFF';
+    document.getElementById('sens-val').textContent = sensitivity;
+    document.getElementById('fade-val').textContent = fadeRate + '%';
+
+    requestAnimationFrame(render);
+  }
+
+  setInterval(function() {
+    if (mode === 'motion') detectMotion();
+    else if (mode === 'bright') detectBrightness();
+    else if (mode === 'coco') detectCoco();
+  }, 150);
+
+  // ---------- UI ----------
+  function loadVideoFile(file) {
+    if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+    vid.srcObject = null;
+    const url = URL.createObjectURL(file);
+    vid.src = url;
+    vid.loop = true; vid.muted = true;
+    vid.play();
+    dropZone.style.display = 'none';
+    setLog('Video loaded: ' + file.name);
+    setStatus('PLAYING');
+  }
+
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadVideoFile(e.target.files[0]); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) loadVideoFile(f);
+  });
+
+  // ---------- CAMERA / WEBCAM ----------
+  let currentFacingMode = 'environment'; // default: back camera (for "observing the world")
+
+  async function startWebcam(facingMode) {
+    // Stop previous stream if any
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(t => t.stop());
+      webcamStream = null;
+    }
+
+    setLog('Starting webcam… (requesting permission)');
+    setStatus('LOADING');
+
+    // Check if getUserMedia exists at all
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setLog('Camera not supported on this browser. Try Safari or Chrome.');
+      setStatus('ERROR');
+      return false;
+    }
+
+    // Primary attempt: exact facing mode
+    const constraints = {
+      video: {
+        facingMode: { ideal: facingMode },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err1) {
+      // Fallback 1: drop facing mode constraint
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (err2) {
+        // Surface a readable reason
+        let msg = 'Webcam error: ' + (err2.name || 'Unknown');
+        if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
+          msg = 'Camera permission denied. On iOS: Settings → Safari → Camera → Allow.';
+        } else if (err2.name === 'NotFoundError' || err2.name === 'DevicesNotFoundError') {
+          msg = 'No camera found on this device.';
+        } else if (err2.name === 'NotReadableError') {
+          msg = 'Camera is in use by another app. Close other camera apps and retry.';
+        } else if (err2.name === 'OverconstrainedError') {
+          msg = 'Camera cannot satisfy the requested settings.';
+        } else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+          msg = 'Camera requires HTTPS. Open this page over https://';
+        }
+        setLog(msg);
+        setStatus('ERROR');
+        return false;
+      }
+    }
+
+    vid.srcObject = webcamStream;
+    // iOS sometimes needs explicit play() after srcObject
+    try { await vid.play(); } catch(e) { /* autoplay may fail, but user gesture triggered this, so it should be fine */ }
+
+    currentFacingMode = facingMode;
+    setLog(facingMode === 'environment' ? 'Webcam active (back camera).' : 'Webcam active (front camera).');
+    setStatus('LIVE');
+    document.getElementById('btn-flip-cam').disabled = false;
+    return true;
+  }
+
+  document.getElementById('btn-webcam').addEventListener('click', async function() {
+    document.getElementById('btn-webcam').classList.add('active');
+    document.getElementById('btn-upload').classList.remove('active');
+    dropZone.style.display = 'none';
+    await startWebcam(currentFacingMode);
+  });
+
+  document.getElementById('btn-flip-cam').addEventListener('click', async function() {
+    if (!webcamStream) return;
+    const next = currentFacingMode === 'environment' ? 'user' : 'environment';
+    await startWebcam(next);
+  });
+
+  document.getElementById('btn-upload').addEventListener('click', function() {
+    document.getElementById('btn-upload').classList.add('active');
+    document.getElementById('btn-webcam').classList.remove('active');
+    if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+    vid.srcObject = null;
+    dropZone.style.display = 'block';
+    document.getElementById('btn-flip-cam').disabled = true;
+  });
+
+  function setMode(newMode, btnId) {
+    mode = newMode;
+    ['mode-motion','mode-bright','mode-coco'].forEach(id =>
+      document.getElementById(id).classList.toggle('active', id === btnId)
+    );
+    setLog('Detection mode: ' + newMode);
+    if (newMode === 'coco' && !cocoReady) initCoco();
+  }
+  document.getElementById('mode-motion').addEventListener('click', () => setMode('motion','mode-motion'));
+  document.getElementById('mode-bright').addEventListener('click', () => setMode('bright','mode-bright'));
+  document.getElementById('mode-coco').addEventListener('click', () => setMode('coco','mode-coco'));
+
+  // Removed: cv click handler for manual points, btn-clear handler
+
+  document.getElementById('btn-clear-trails').addEventListener('click', function() {
+    accCtx.clearRect(0, 0, W, H);
+    setLog('Trails cleared.');
+  });
+
+  document.getElementById('btn-play').addEventListener('click', function() {
+    vid.play(); setStatus('PLAYING');
+    this.classList.add('active');
+    document.getElementById('btn-pause').classList.remove('active');
+  });
+  document.getElementById('btn-pause').addEventListener('click', function() {
+    vid.pause(); setStatus('PAUSED');
+    this.classList.add('active');
+    document.getElementById('btn-play').classList.remove('active');
+  });
+
+  function toggleBtn(id, getter, setter) {
+    document.getElementById(id).addEventListener('click', function() {
+      setter(!getter());
+      this.classList.toggle('active', getter());
+    });
+  }
+  toggleBtn('btn-boxes',     () => showBoxes,    v => showBoxes = v);
+  toggleBtn('btn-ranges',    () => showRanges,   v => showRanges = v);
+  toggleBtn('btn-lines',     () => showLines,    v => showLines = v);
+  toggleBtn('btn-circles',   () => showCircles,  v => showCircles = v);
+  toggleBtn('btn-labels',    () => showLabels,   v => showLabels = v);
+  toggleBtn('btn-video',     () => showVideo,    v => showVideo = v);
+  toggleBtn('btn-trails',    () => showTrails,   v => showTrails = v);
+  toggleBtn('btn-grayscale', () => grayscale,    v => grayscale = v);
+
+  // Theme buttons
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      applyTheme(this.dataset.theme);
+    });
+  });
+
+  document.getElementById('btn-screenshot').addEventListener('click', function() {
+    const suffix = showTrails ? 'trails' : mode;
+    const filename = 'CONTACT_' + suffix + '_' + Date.now() + '.png';
+    const dataUrl = cv.toDataURL('image/png');
+
+    // Detect iOS (iPhone / iPad / iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+      // iOS Safari doesn't reliably support the download attribute.
+      // Open the image in a new tab — user can then long-press → Save to Photos.
+      const w = window.open();
+      if (w) {
+        w.document.write(
+          '<html><head><title>' + filename + '</title>' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;}' +
+          'img{max-width:100%;height:auto;}' +
+          'p{position:fixed;top:12px;left:12px;right:12px;color:#2dd36f;font-family:-apple-system,sans-serif;font-size:11px;text-align:center;letter-spacing:0.1em;}' +
+          '</style></head><body>' +
+          '<p>LONG-PRESS THE IMAGE → SAVE TO PHOTOS</p>' +
+          '<img src="' + dataUrl + '" alt="' + filename + '">' +
+          '</body></html>'
+        );
+        w.document.close();
+        setLog('Screenshot opened — long-press to save.');
+      } else {
+        setLog('Popup blocked. Allow popups and try again.');
+      }
+    } else {
+      // Desktop / Android: use anchor download
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+      setLog('Screenshot saved: ' + filename);
+    }
+  });
+
+  resizeCanvas();
+  // Debounced resize handler — also handles iOS orientation change
+  let resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeCanvas, 120);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  requestAnimationFrame(render);
+
+})();
+</script>
+</body>
+</html>
